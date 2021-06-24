@@ -22,9 +22,39 @@
  *   should we send silence??) and we can potentially do that by blocking until we have at least the correct amount of data.
  *
  *
+ * e.g.
+ *
+ *   bip_buffer b = init_buffer(); //should spin up a writer and reader thread for the buffer
+ *   uint16_t* data = get_test_data();
+
+ *   //reserve space -> write/commit data to it
+ *   uint8_t res = try_write_and_commit(b, data); //this should be performed via the write thread
+ *   //read data and clear reserved region
+ *   uint16_t* res_data = try_read_and_drop(b);   //this should be performed via the read thread
+ *
  * */
 
 #include <pthread.h>
 #include <stdlib.h>
 #include <stdint.h>
 #include <string.h>
+
+typedef struct bip_buffer{
+  uint32_t capacity;
+  uint32_t readsize;
+  void* reserved_head; /* NB: reads will be from reserved_head to reserved_head+readsize */
+
+  void* buffer;
+
+  //regions
+  uint32_t a_head;
+  uint32_t a_tail;
+  uint32_t b_head;
+  uint32_t b_tail;
+} bip_buffer;
+
+bip_buffer* init_buffer();
+
+uint8_t* try_write_and_commit(bip_buffer* b, void* data);
+
+void* try_read_and_drop(bip_buffer* b);
