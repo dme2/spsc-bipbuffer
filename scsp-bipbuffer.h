@@ -39,6 +39,24 @@
  *
  * */
 
+
+/*
+ *  TODO:
+ *     [] figure out writing function
+ *        e.g. in alsa/tinyalsa, the function pcm_readi(&buffer) takes a reference to the buffer
+ *             so should we pass in a handle/pointer to the buffers current reserved space?
+ *
+ *             reserve(buff);
+ *             pcm_readi(&buffer + buff->reserved_space);
+ *             commit(buffer, read_size);
+ *             do_something_with_buffer_data(buffer);
+ *             decommit(buffer, read_size);
+ *
+ *     [] fix reserve/commit/decommit logic - reserve should return a pointer to the newly reserved block
+ *         commit should clear the reservation and leave only commit_sized data in the block. which is then able to be read
+ *         decommit should clear teh commited data
+ */
+
 #include <pthread.h>
 #include <semaphore.h>
 #include <stdlib.h>
@@ -51,6 +69,10 @@ typedef struct rw {
   pthread_t read_thread;
 } rw;
 
+pthread_mutex_t write_mutex = PTHREAD_MUTEX_INITIALIZER;
+
+pthread_mutex_t read_mutex = PTHREAD_MUTEX_INITIALIZER;
+
 typedef struct bip_buffer{
   uint32_t capacity;
   uint32_t readsize;
@@ -58,6 +80,7 @@ typedef struct bip_buffer{
   uint32_t reserved_tail;
 
   uint16_t* buffer;
+  uint16_t* read_buffer;
 
   //regions
   uint32_t a_head;
@@ -74,7 +97,6 @@ typedef struct threadargs{
   void* data;
   uint16_t rw_size;
 } threadargs;
-
 
 void* temp_read_fn(void* arg);
 
@@ -186,7 +208,7 @@ uint8_t write_data(bip_buffer* b, void* data){
   return 0;
 }
 
-int write_and_commit(bip_buffer* b, void* data){
+int try_write_data(bip_buffer* b, void* data){
   threadargs* ta = malloc(sizeof(threadargs));
   ta->b = b;
   ta->data = data;
@@ -195,7 +217,20 @@ int write_and_commit(bip_buffer* b, void* data){
   pthread_t write_thread;
   pthread_create(&write_thread, NULL, (void*)try_write_and_commit, ta);
 
+  pthread_join(write_thread,NULL);
   return 0;
+}
+
+uint16_t* try_read_data(bip_buffer* b){
+  threadargs* ta = malloc(sizeof(threadargs));
+  ta->b = b;
+  ta->rw_size = 1024;
+
+  pthread_t read_thread;
+  pthread_create(&read_thread, NULL, (void*)try_write_and_commit, ta);
+
+  pthread_join(read_thread,NULL);
+  return b->read_buffer;
 }
 
 //reserve space -> write data -> commit
@@ -205,13 +240,32 @@ int try_write_and_commit(threadargs* ta){
   //mutex lock?
 
   reserve(ta->b);
+
+  pthread_mutex_lock(&write_mutex);
+
   write_data(ta->b,ta->data);
   commit(ta->b, ta->rw_size);
 
-  sem_post(ta->b->sem);
+  pthread_mutex_unlock(&write_mutex);
+  //sem_post(ta->b->sem);
 
   return 0;
 }
 
 //read from reserved space (reserved_head + readsize) -> decommit -> return buffer
-void* try_read_and_drop(bip_buffer* b);
+void try_read_and_drop(threadargs* ta){
+  bip_buffer* b = ta->b;
+  uint16_t* ret_buffer = calloc(0, b->a_tail - b->a_head);
+
+  pthread_mutex_lock(&read_mutex);
+
+  memcpy(&ret_buffer, &b->buffer[b->a_head], b->a_tail * sizeof(uint16_t));
+
+  pthread_mutex_unlock(&read_mutex);
+
+  b->read_buffer = ret_buffer;
+
+  decommit(b,ta->rw_size);
+
+  return;
+}
