@@ -6,8 +6,10 @@
  *  [?] plan out r/w synchronization (i suspect we may need semaphores here)
  *  [x] implement commit function
  *  [?] implement thread split function
- *  [ ] implement buffer slice function
- *
+ *  [x]  implement buffer slice function
+ *  []  implement release function
+ *  []  implement cleanup function
+ *  []  fix datatype usage (BipBuffer struct Initialization, slices, etc...)
  * */
 
 #include <pthread.h>
@@ -95,12 +97,15 @@ typedef struct WritableBuff {
 
 } WritableBuff;
 
-void* get_buffer_slice(BipBuffer* b, uint16_t start, uint16_t size);
+uint16_t* get_buffer_slice(BipBuffer* b, uint16_t start, uint16_t size){
+  uint16_t* ret_buffer = calloc(0, size*sizeof(uint16_t));
+  memcpy(ret_buffer, b->buffer+start, size*sizeof(uint16_t));
+  return ret_buffer;
+}
 
 /* TODO, reserve_exact
  *       [] Better error handling
  *       [x] fix atomic variable handling
- *       [] implement get_writable_slice
  */
 
 //returns a usable buffer with exactly size bits available
@@ -148,7 +153,7 @@ WritableBuff* reserve_exact(BipProducer* prod, uint16_t size){
   wb->bipbuff = b;
   wb->to_commit = 0;
 
-  void* temp_buff = get_buffer_slice(wb->bipbuff,start,size);
+  void* temp_buff = (void*)get_buffer_slice(wb->bipbuff,start,size);
   wb->buff = temp_buff;
   return wb;
 }
