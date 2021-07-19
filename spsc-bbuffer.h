@@ -12,6 +12,20 @@
  *  []  fix datatype usage (BipBuffer struct Initialization, slices, etc...)
  * */
 
+
+/*  Example Usage
+ *  BipBuffer* b = new_buffer(len,uint16_t);
+ *  BipPC* bpc = split(b);
+ *  WritableBuff* wb = reserve_exact(bps->prod, 10);
+ *  uint16_t* temp[10] = {1,2,3,3,4,5,1,2,3,4,5};
+ *  copy_into(wb->buff,temp);
+ *  commit(wb,10,len);
+ *  ReadableBuff* rb = read_data(bpc->con);
+ *
+ * //perform something with rb here...
+ *
+ */
+
 #include <pthread.h>
 #include <semaphore.h>
 #include <stdlib.h>
@@ -55,6 +69,9 @@ BipBuffer* new_buffer(uint16_t len, void* type){
    producer and consumer "objects"
 
    they both get access to the same bipbuffer
+
+   TODO:
+      [] Turn this into a union
 */
 
 typedef struct BipProducer {
