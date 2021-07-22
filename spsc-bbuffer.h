@@ -7,13 +7,14 @@
  *  [x] implement commit function
  *  [?] implement thread split function
  *  [x]  implement buffer slice function
- *  []  implement release function
+ *  [x]  implement release function
  *  []  implement cleanup function
- *  []  fix datatype usage (BipBuffer struct Initialization, slices, etc...)
+ *  [x]  fix datatype usage (BipBuffer struct Initialization, slices, etc...)
+ *  [] write tests
  * */
 
 
-/*  Example Usage
+/*  Example Usage (Single Thread)
  *  BipBuffer* b = new_buffer(len,uint16_t);
  *  BipPC* bpc = split(b);
  *  WritableBuff* wb = reserve_exact(bps->prod, 10);
@@ -22,8 +23,26 @@
  *  commit(wb,10,len);
  *  ReadableBuff* rb = read_data(bpc->con);
  *
- * //perform something with rb here...
+ * //perform something with rb here
  *
+ *
+ */
+
+/*  Example Usage (Multi-Threaded)
+ *  pthread_t write_thread, read_thread;
+ *  //set up bipbuffer here
+ *  .
+ *  .
+ *  .
+ *  //set up read/write functions
+ *  .
+ *  .
+ *  .
+ *  int write_retval = pthread_create(&write_thread, write_data_func, (struct args*) write_args);
+ *  int read_retval  = pthread_create(&read_thread, read_data_func, (struct args*) read_args);
+ *
+ *  pthread_join(&write_thread);
+ *  pthread_join(&read_thread);
  */
 
 #include <pthread.h>
@@ -36,22 +55,22 @@
 #include <stdlib.h>
 
 typedef struct BipBuffer {
-  void* buffer;
+  uint16_t* buffer;
   uint16_t buffer_len;
 
-  atomic_int_least16_t write; //where next byte should be written
-  atomic_int_least16_t read;  //where next byte should be read
+  atomic_int_fast16_t write; //where next byte should be written
+  atomic_int_fast16_t read;  //where next byte should be read
 
-  atomic_int_least16_t last; // last readable block
-  atomic_int_least16_t reserve; // marks current reserved bytes
+  atomic_int_fast16_t last; // last readable block
+  atomic_int_fast16_t reserve; // marks current reserved bytes
 
   atomic_bool read_in_prog;
   atomic_bool write_in_prog;
 } BipBuffer;
 
-BipBuffer* new_buffer(uint16_t len, void* type){
+BipBuffer* new_buffer(uint16_t len){
   BipBuffer* b = malloc(sizeof(BipBuffer));
-  void* temp_buffer = calloc(0,sizeof(type)*len);
+  uint16_t* temp_buffer = calloc(0,sizeof(uint16_t)*len);
 
   b->buffer = temp_buffer;
   b->buffer_len = len;
@@ -76,12 +95,12 @@ BipBuffer* new_buffer(uint16_t len, void* type){
 
 typedef struct BipProducer {
   BipBuffer* buff;
-  void* data;
+  uint16_t* data;
 } BipProducer;
 
 typedef struct BipConsumer {
   BipBuffer* buff;
-  void* data;
+  uint16_t* data;
 } BipConsumer;
 
 //a tuple for returning from functions
@@ -108,7 +127,7 @@ BipPC* split(BipBuffer* b){
 
 //reserved buffer space - to be written to from e.g. an API
 typedef struct WritableBuff {
-  void* buff;
+  uint16_t* buff;
   BipBuffer* bipbuff;
   uint16_t to_commit;
 
@@ -132,13 +151,13 @@ WritableBuff* reserve_exact(BipProducer* prod, uint16_t size){
 
   BipBuffer* b = prod->buff;
 
-  atomic_int_least16_t write = atomic_load(&b->write);
-  atomic_int_least16_t read = atomic_load(&b->read);
+  atomic_int_fast16_t write = atomic_load(&b->write);
+  atomic_int_fast16_t read = atomic_load(&b->read);
   uint16_t max = size;
 
   bool inverted = write < read ? true : false;
 
-  atomic_int_least16_t start;
+  atomic_int_fast16_t start;
 
   if(inverted){
 	if ((write + size) < read){
@@ -170,7 +189,7 @@ WritableBuff* reserve_exact(BipProducer* prod, uint16_t size){
   wb->bipbuff = b;
   wb->to_commit = 0;
 
-  void* temp_buff = (void*)get_buffer_slice(wb->bipbuff,start,size);
+  uint16_t* temp_buff = get_buffer_slice(wb->bipbuff,start,size);
   wb->buff = temp_buff;
   return wb;
 }
@@ -187,13 +206,13 @@ void commit(WritableBuff* wb,uint16_t used, uint16_t size){
 
   uint16_t len = b->buffer_len;
   uint16_t buff_used = buffer_min(len,used);
-  atomic_int_least16_t write = atomic_load(&b->write);
+  atomic_int_fast16_t write = atomic_load(&b->write);
 
   atomic_fetch_sub(&b->reserve, len-buff_used);
 
   uint16_t max = size;
-  atomic_int_least16_t last = atomic_load(&b->last);
-  atomic_int_least16_t new_write = atomic_load(&b->reserve);
+  atomic_int_fast16_t last = atomic_load(&b->last);
+  atomic_int_fast16_t new_write = atomic_load(&b->reserve);
 
   if(new_write<write && write != max){
 	atomic_store(&b->last,write);
@@ -210,7 +229,7 @@ void commit(WritableBuff* wb,uint16_t used, uint16_t size){
 
 //commited buffer space - to be passed to e.g. an API for reading
 typedef struct ReadableBuff {
-  void* buff;
+  uint16_t* buff;
   BipBuffer* bipbuff;
   uint16_t to_commit;
 
@@ -223,9 +242,9 @@ ReadableBuff* read_data(BipConsumer* con){
 
   BipBuffer* b = con->buff;
 
-  atomic_int_least16_t write = atomic_load(&b->write);
-  atomic_int_least16_t last = atomic_load(&b->last);
-  atomic_int_least16_t read = atomic_load(&b->read);
+  atomic_int_fast16_t write = atomic_load(&b->write);
+  atomic_int_fast16_t last = atomic_load(&b->last);
+  atomic_int_fast16_t read = atomic_load(&b->read);
 
   if(read == last && write < read){
 	read = 0;
@@ -250,9 +269,28 @@ ReadableBuff* read_data(BipConsumer* con){
   rb->bipbuff = b;
   rb->to_commit = 0;
 
-  void* temp_buff = get_buffer_slice(rb->bipbuff,read,size);
+  uint16_t* temp_buff = get_buffer_slice(rb->bipbuff,read,size);
   rb->buff = temp_buff;
   return rb;
 }
 
-void release_data(ReadableBuff* rb);
+void release_data(ReadableBuff* rb, uint16_t used){
+  uint16_t min_used = buffer_min(used,rb->bipbuff->buffer_len);
+
+  atomic_int_fast16_t r_i_p = atomic_load(&rb->bipbuff->read_in_prog);
+
+  if(!r_i_p)
+	return;
+
+  //assert used <= rb->bipbuff->buffer_len
+
+  atomic_fetch_add(&rb->bipbuff->read, min_used);
+
+  atomic_store(&rb->bipbuff->read_in_prog,false);
+
+  //free without freeing the bip_buffer object
+  free(rb->buff);
+  free(rb);
+
+  return;
+}
