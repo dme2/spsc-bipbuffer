@@ -41,11 +41,21 @@ void* mmap_init_buffer(size_t sz){
 	exit(EXIT_FAILURE);
   }
 
-  //get bufer address
-  void* buffer = mmap(NULL, 2*sz, PROT_NONE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
+  //get buffer address
+  void* buffer;
+  if((buffer = mmap(NULL, 2*sz, PROT_NONE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0)) == MAP_FAILED){
+	printf("buffer address error");
+	exit(EXIT_FAILURE);
+  }
 
-  mmap(buffer,    sz, PROT_READ | PROT_WRITE, MAP_SHARED | MAP_FIXED, fd, 0);
-  mmap(buffer+sz, sz, PROT_READ | PROT_WRITE, MAP_SHARED | MAP_FIXED, fd, 0);
+  if(mmap(buffer, sz, PROT_READ | PROT_WRITE, MAP_SHARED | MAP_FIXED, fd, 0) == MAP_FAILED){
+	printf("buffer region 1 error\n");
+	exit(EXIT_FAILURE);
+   }
+  if(mmap(buffer+sz, sz, PROT_READ | PROT_WRITE, MAP_SHARED | MAP_FIXED, fd, 0) == MAP_FAILED){
+	printf("buffer region 2 error\n");
+	exit(EXIT_FAILURE);
+  }
 
   return buffer;
 }

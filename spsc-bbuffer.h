@@ -3,8 +3,8 @@
 */
 
 /* TODO, in general
- *  [] try out dark magic mmapping for buffer space
- *     []
+ *  [x] try out dark magic mmapping for buffer space
+ *     [] fix pointer arithmetic w.r.t. slices and other
  *  [?] plan out r/w synchronization (i suspect we may need semaphores here)
  *  [x] implement commit function
  *  [?] implement thread split function
@@ -140,9 +140,14 @@ typedef struct WritableBuff {
 
 } WritableBuff;
 
+typedef struct BufferSlice {
+  uint16_t* head;
+  uint16_t* tail;
+} BufferSlice;
+
 /*
  * TODO:
- *  [] fix pointer offset indexing here
+ *  [] fix pointer offset indexing here, should basically return a head/tail pointer
 */
 uint16_t* get_buffer_slice(BipBuffer* b, uint16_t start, uint16_t size){
   uint16_t* ret_buffer = malloc(size*sizeof(uint16_t));
