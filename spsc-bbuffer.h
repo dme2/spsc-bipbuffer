@@ -3,11 +3,13 @@
 */
 
 /* TODO, in general
+ *  [] try out dark magic mmapping for buffer space
  *  [?] plan out r/w synchronization (i suspect we may need semaphores here)
  *  [x] implement commit function
  *  [?] implement thread split function
  *  [x]  implement buffer slice function
  *  [x]  implement release function
+ *  []   cleanup writebuffer
  *  []  implement cleanup function
  *  [x]  fix datatype usage (BipBuffer struct Initialization, slices, etc...)
  *  [] write tests
@@ -50,6 +52,7 @@
 #include <stdlib.h>
 #include <stdint.h>
 #include <string.h>
+#include <stdio.h>
 #include <stdatomic.h>
 #include <stdbool.h>
 #include <stdlib.h>
@@ -133,9 +136,13 @@ typedef struct WritableBuff {
 
 } WritableBuff;
 
+/* 
+ * TODO: 
+ *  [] fix pointer offset indexing here
+*/
 uint16_t* get_buffer_slice(BipBuffer* b, uint16_t start, uint16_t size){
-  uint16_t* ret_buffer = calloc(0, size*sizeof(uint16_t));
-  memcpy(ret_buffer, b->buffer+start, size*sizeof(uint16_t));
+  uint16_t* ret_buffer = malloc(size*sizeof(uint16_t));
+  memcpy(ret_buffer, &b->buffer+start, size*sizeof(uint16_t));
   return ret_buffer;
 }
 
@@ -146,8 +153,10 @@ uint16_t* get_buffer_slice(BipBuffer* b, uint16_t start, uint16_t size){
 
 //returns a usable buffer with exactly size bits available
 WritableBuff* reserve_exact(BipProducer* prod, uint16_t size){
-  if(atomic_exchange(&prod->buff->write_in_prog, true))
+  if(atomic_exchange(&prod->buff->write_in_prog, true)){
+	printf("ATOMIC_ERR\n");
 	exit(EXIT_FAILURE);
+  }
 
   BipBuffer* b = prod->buff;
 
@@ -191,7 +200,10 @@ WritableBuff* reserve_exact(BipProducer* prod, uint16_t size){
 
   uint16_t* temp_buff = get_buffer_slice(wb->bipbuff,start,size);
   wb->buff = temp_buff;
+
+  atomic_store(&b->write_in_prog, false);
   return wb;
+
 }
 
 uint16_t buffer_min(uint16_t x, uint16_t y){
@@ -199,8 +211,10 @@ uint16_t buffer_min(uint16_t x, uint16_t y){
 }
 
 void commit(WritableBuff* wb,uint16_t used, uint16_t size){
-  if(atomic_exchange(&wb->bipbuff->write_in_prog, true))
+  if(atomic_exchange(&wb->bipbuff->write_in_prog, true)){
+	printf("ATOMIC_ERR\n");
 	exit(EXIT_FAILURE);
+  }
 
   BipBuffer* b = wb->bipbuff;
 
@@ -223,6 +237,10 @@ void commit(WritableBuff* wb,uint16_t used, uint16_t size){
 
   atomic_store(&b->write, new_write);
   atomic_store(&b->write_in_prog, false);
+
+  //cleanup writable buffer
+  free(wb->buff);
+  free(wb); 
 
   return;
 }
@@ -260,6 +278,9 @@ ReadableBuff* read_data(BipConsumer* con){
 
   size -= read;
 
+  printf("read: %i\n",read);
+  printf("size: %i\n",size);
+  
   if(size == 0){
 	atomic_store(&b->read_in_prog, false);
   }
