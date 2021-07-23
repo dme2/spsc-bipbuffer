@@ -4,6 +4,7 @@
 
 /* TODO, in general
  *  [] try out dark magic mmapping for buffer space
+ *     []
  *  [?] plan out r/w synchronization (i suspect we may need semaphores here)
  *  [x] implement commit function
  *  [?] implement thread split function
@@ -57,6 +58,8 @@
 #include <stdbool.h>
 #include <stdlib.h>
 
+#include "buffer_internal.h"
+
 typedef struct BipBuffer {
   uint16_t* buffer;
   uint16_t buffer_len;
@@ -73,7 +76,8 @@ typedef struct BipBuffer {
 
 BipBuffer* new_buffer(uint16_t len){
   BipBuffer* b = malloc(sizeof(BipBuffer));
-  uint16_t* temp_buffer = calloc(0,sizeof(uint16_t)*len);
+
+  uint16_t* temp_buffer = (uint16_t*)mmap_init_buffer(len);
 
   b->buffer = temp_buffer;
   b->buffer_len = len;
@@ -136,8 +140,8 @@ typedef struct WritableBuff {
 
 } WritableBuff;
 
-/* 
- * TODO: 
+/*
+ * TODO:
  *  [] fix pointer offset indexing here
 */
 uint16_t* get_buffer_slice(BipBuffer* b, uint16_t start, uint16_t size){
@@ -240,7 +244,7 @@ void commit(WritableBuff* wb,uint16_t used, uint16_t size){
 
   //cleanup writable buffer
   free(wb->buff);
-  free(wb); 
+  free(wb);
 
   return;
 }
@@ -280,7 +284,7 @@ ReadableBuff* read_data(BipConsumer* con){
 
   printf("read: %i\n",read);
   printf("size: %i\n",size);
-  
+
   if(size == 0){
 	atomic_store(&b->read_in_prog, false);
   }
