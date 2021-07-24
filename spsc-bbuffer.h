@@ -132,18 +132,27 @@ BipPC* split(BipBuffer* b){
   return bpc;
 }
 
+typedef struct BufferSlice {
+  uint16_t head;
+  uint16_t tail;
+} BufferSlice;
+
 //reserved buffer space - to be written to from e.g. an API
 typedef struct WritableBuff {
   uint16_t* buff;
   BipBuffer* bipbuff;
   uint16_t to_commit;
-
+  BufferSlice* slice;
 } WritableBuff;
 
-typedef struct BufferSlice {
-  uint16_t* head;
-  uint16_t* tail;
-} BufferSlice;
+BufferSlice* get_buffer_slice_offsets(uint16_t start, uint16_t size){
+  BufferSlice* bs = malloc(sizeof(BufferSlice));
+
+  bs->head = start;
+  bs->tail = start+size;
+
+  return bs;
+}
 
 /*
  * TODO:
@@ -210,6 +219,8 @@ WritableBuff* reserve_exact(BipProducer* prod, uint16_t size){
   uint16_t* temp_buff = get_buffer_slice(wb->bipbuff,start,size);
   wb->buff = temp_buff;
 
+  BufferSlice* b_slice = get_buffer_slice_offsets(start,size);
+  wb->slice = b_slice;
   atomic_store(&b->write_in_prog, false);
   return wb;
 
@@ -259,7 +270,7 @@ typedef struct ReadableBuff {
   uint16_t* buff;
   BipBuffer* bipbuff;
   uint16_t to_commit;
-
+  BufferSlice* slice;
 } ReadableBuff;
 
 //returns a buffer ready for consumption
@@ -287,8 +298,8 @@ ReadableBuff* read_data(BipConsumer* con){
 
   size -= read;
 
-  printf("read: %i\n",read);
-  printf("size: %i\n",size);
+  //printf("read: %i\n",read);
+  //printf("size: %i\n",size);
 
   if(size == 0){
 	atomic_store(&b->read_in_prog, false);
@@ -301,6 +312,10 @@ ReadableBuff* read_data(BipConsumer* con){
 
   uint16_t* temp_buff = get_buffer_slice(rb->bipbuff,read,size);
   rb->buff = temp_buff;
+
+  BufferSlice* b_slice = get_buffer_slice_offsets(read,size);
+  rb->slice = b_slice;
+
   return rb;
 }
 
