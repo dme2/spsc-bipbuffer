@@ -14,6 +14,7 @@
  *  []  implement cleanup function
  *  [x]  fix datatype usage (BipBuffer struct Initialization, slices, etc...)
  *  [] write tests
+ *  [] Makefile
  * */
 
 
@@ -22,7 +23,10 @@
  *  BipPC* bpc = split(b);
  *  WritableBuff* wb = reserve_exact(bps->prod, 10);
  *  uint16_t* temp[10] = {1,2,3,3,4,5,1,2,3,4,5};
- *  copy_into(wb->buff,temp);
+ *
+ *  //the writable buffer contains ptr offsets that we should memcpy into
+ *  //abstracted here by copy_into
+ *  copy_into(wb);
  *  commit(wb,10,len);
  *  ReadableBuff* rb = read_data(bpc->con);
  *
@@ -216,8 +220,8 @@ WritableBuff* reserve_exact(BipProducer* prod, uint16_t size){
   wb->bipbuff = b;
   wb->to_commit = 0;
 
-  uint16_t* temp_buff = get_buffer_slice(wb->bipbuff,start,size);
-  wb->buff = temp_buff;
+  //uint16_t* temp_buff = get_buffer_slice(wb->bipbuff,start,size);
+  //wb->buff = temp_buff;
 
   BufferSlice* b_slice = get_buffer_slice_offsets(start,size);
   wb->slice = b_slice;
@@ -259,7 +263,7 @@ void commit(WritableBuff* wb,uint16_t used, uint16_t size){
   atomic_store(&b->write_in_prog, false);
 
   //cleanup writable buffer
-  free(wb->buff);
+  //free(wb->buff);
   free(wb);
 
   return;
@@ -310,8 +314,8 @@ ReadableBuff* read_data(BipConsumer* con){
   rb->bipbuff = b;
   rb->to_commit = 0;
 
-  uint16_t* temp_buff = get_buffer_slice(rb->bipbuff,read,size);
-  rb->buff = temp_buff;
+  //uint16_t* temp_buff = get_buffer_slice(rb->bipbuff,read,size);
+  //rb->buff = temp_buff;
 
   BufferSlice* b_slice = get_buffer_slice_offsets(read,size);
   rb->slice = b_slice;
@@ -329,12 +333,13 @@ void release_data(ReadableBuff* rb, uint16_t used){
 
   //assert used <= rb->bipbuff->buffer_len
 
+  //increment next read byte
   atomic_fetch_add(&rb->bipbuff->read, min_used);
 
   atomic_store(&rb->bipbuff->read_in_prog,false);
 
   //free without freeing the bip_buffer object
-  free(rb->buff);
+  //free(rb->buff);
   free(rb);
 
   return;
