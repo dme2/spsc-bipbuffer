@@ -3,7 +3,9 @@
 #include <stdint.h>
 #include <string.h>
 
-/* Test basic usage */
+#include <pthread.h>
+/* test multithreaded usage */
+
 int main(){
   printf("running!\n");
   BipBuffer* b = new_buffer(4096);

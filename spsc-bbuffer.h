@@ -4,15 +4,17 @@
 
 /* TODO, in general
  *  [x] try out dark magic mmapping for buffer space
- *     [] fix pointer arithmetic w.r.t. slices and other
+ *     [x] fix pointer arithmetic w.r.t. slices and other
  *  [?] plan out r/w synchronization (i suspect we may need semaphores here)
  *  [x] implement commit function
  *  [?] implement thread split function
- *  [x]  implement buffer slice function
- *  [x]  implement release function
- *  []   cleanup writebuffer
- *  []  implement cleanup function
- *  [x]  fix datatype usage (BipBuffer struct Initialization, slices, etc...)
+ *  [x] implement buffer slice function
+ *  [x] implement release function
+ *  [x] cleanup writebuffer
+ *  [x] implement cleanup function
+ *  [x] fix datatype usage (BipBuffer struct Initialization, slices, etc...)
+ *  [] better interface for interacting with read/write buffers
+ *  [] are the read/write 'certificates' necessary for synchronization?
  *  [] write tests
  *  [] Makefile
  * */
@@ -52,7 +54,6 @@
  *  pthread_join(&read_thread);
  */
 
-#include <pthread.h>
 #include <semaphore.h>
 #include <stdlib.h>
 #include <stdint.h>
@@ -342,5 +343,11 @@ void release_data(ReadableBuff* rb, uint16_t used){
   //free(rb->buff);
   free(rb);
 
+  return;
+}
+
+void cleanup_bipbuffer(BipBuffer* b){
+  //free(b->buffer);
+  free(b);
   return;
 }
