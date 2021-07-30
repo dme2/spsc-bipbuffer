@@ -16,7 +16,9 @@
  *  [] better interface for interacting with read/write buffers
  *  [] are the read/write 'certificates' necessary for synchronization?
  *  [] write tests
- *  [] Makefile
+ *     [x] basic usage
+ *     [] multithreaded
+ *  [x] Makefile
  * */
 
 

@@ -43,6 +43,7 @@ void* mmap_init_buffer(size_t sz){
 
   //get buffer address
   void* buffer;
+
   if((buffer = mmap(NULL, 2*sz, PROT_NONE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0)) == MAP_FAILED){
 	printf("buffer address error");
 	exit(EXIT_FAILURE);
