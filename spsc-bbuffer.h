@@ -5,7 +5,7 @@
 /* TODO, in general
  *  [x] try out dark magic mmapping for buffer space
  *     [x] fix pointer arithmetic w.r.t. slices and other
- *  [?] plan out r/w synchronization (i suspect we may need semaphores here)
+ *  [x] plan out r/w synchronization (i suspect we may need semaphores here)
  *  [x] implement commit function
  *  [?] implement thread split function
  *  [x] implement buffer slice function
@@ -14,10 +14,11 @@
  *  [x] implement cleanup function
  *  [x] fix datatype usage (BipBuffer struct Initialization, slices, etc...)
  *  [] better interface for interacting with read/write buffers
- *  [] are the read/write 'certificates' necessary for synchronization?
- *  [] write tests
+ *  [?] are the read/write 'certificates' necessary for synchronization?
+ *  [x] write tests
  *     [x] basic usage
- *     [] multithreaded
+ *     [x] multithreaded
+ *  [] write more tests
  *  [x] Makefile
  * */
 
@@ -56,7 +57,6 @@
  *  pthread_join(&read_thread);
  */
 
-#include <semaphore.h>
 #include <stdlib.h>
 #include <stdint.h>
 #include <string.h>

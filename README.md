@@ -1,3 +1,8 @@
-A single-consumer single-producer bip buffer in C. 
+An (ideally) single-consumer single-producer bip buffer.
 
-The use case is for audio programming. In order to avoid data corruption due to read errors (too little or too much data) the scsp bip buffer will (attempt to (need to add some sort of granular control over read/write wait times) synchronize writing/reading between different threads. 
+Essentially a reimplementation of James Munns' bbqueue in *gasp* C ([linked here](https://github.com/jamesmunns/bbqueue))
+
+Simon Cooke introducted the bip-buffer nearly 20 years ago.
+[Read about the bip-buffer data structure here](https://www.codeproject.com/articles/3479/the-bip-buffer-the-circular-buffer-with-a-twist)
+
+Run make tests to compile the test programs.
