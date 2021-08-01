@@ -1,4 +1,4 @@
-An (ideally) single-consumer single-producer bip buffer.
+An (ideally) single-consumer single-producer bip buffer, implemented in two header files.
 
 Essentially a reimplementation of James Munns' bbqueue in *gasp* C ([linked here](https://github.com/jamesmunns/bbqueue))
 
