@@ -24,10 +24,10 @@
 
 
 /*  Example Usage (Single Thread)
- *  BipBuffer* b = new_buffer(len,uint16_t);
+ *  BipBuffer* b = new_buffer(len,int16_t);
  *  BipPC* bpc = split(b);
  *  WritableBuff* wb = reserve_exact(bps->prod, 10);
- *  uint16_t* temp[10] = {1,2,3,3,4,5,1,2,3,4,5};
+ *  int16_t* temp[10] = {1,2,3,3,4,5,1,2,3,4,5};
  *
  *  //the writable buffer contains ptr offsets that we should memcpy into
  *  //abstracted here by copy_into
@@ -68,7 +68,7 @@
 #include "buffer_internal.h"
 
 typedef struct BipBuffer {
-  uint16_t* buffer;
+  int16_t* buffer;
   uint16_t buffer_len;
 
   atomic_int_fast16_t write; //where next byte should be written
@@ -84,7 +84,7 @@ typedef struct BipBuffer {
 BipBuffer* new_buffer(uint16_t len){
   BipBuffer* b = malloc(sizeof(BipBuffer));
 
-  uint16_t* temp_buffer = (uint16_t*)mmap_init_buffer(len);
+  int16_t* temp_buffer = (int16_t*)mmap_init_buffer(len);
 
   b->buffer = temp_buffer;
   b->buffer_len = len;
@@ -109,12 +109,12 @@ BipBuffer* new_buffer(uint16_t len){
 
 typedef struct BipProducer {
   BipBuffer* buff;
-  uint16_t* data;
+  int16_t* data;
 } BipProducer;
 
 typedef struct BipConsumer {
   BipBuffer* buff;
-  uint16_t* data;
+  int16_t* data;
 } BipConsumer;
 
 //a tuple for returning from functions
@@ -140,13 +140,13 @@ BipPC* split(BipBuffer* b){
 }
 
 typedef struct BufferSlice {
-  uint16_t head;
-  uint16_t tail;
+  int16_t head;
+  int16_t tail;
 } BufferSlice;
 
 //reserved buffer space - to be written to from e.g. an API
 typedef struct WritableBuff {
-  uint16_t* buff;
+  int16_t* buff;
   BipBuffer* bipbuff;
   uint16_t to_commit;
   BufferSlice* slice;
@@ -165,9 +165,9 @@ BufferSlice* get_buffer_slice_offsets(uint16_t start, uint16_t size){
  * TODO:
  *  [] fix pointer offset indexing here, should basically return a head/tail pointer
 */
-uint16_t* get_buffer_slice(BipBuffer* b, uint16_t start, uint16_t size){
-  uint16_t* ret_buffer = malloc(size*sizeof(uint16_t));
-  memcpy(ret_buffer, &b->buffer+start, size*sizeof(uint16_t));
+int16_t* get_buffer_slice(BipBuffer* b, uint16_t start, uint16_t size){
+  int16_t* ret_buffer = malloc(size*sizeof(int16_t));
+  memcpy(ret_buffer, &b->buffer+start, size*sizeof(int16_t));
   return ret_buffer;
 }
 
@@ -274,7 +274,7 @@ void commit(WritableBuff* wb,uint16_t used, uint16_t size){
 
 //commited buffer space - to be passed to e.g. an API for reading
 typedef struct ReadableBuff {
-  uint16_t* buff;
+  int16_t* buff;
   BipBuffer* bipbuff;
   uint16_t to_commit;
   BufferSlice* slice;
@@ -317,7 +317,7 @@ ReadableBuff* read_data(BipConsumer* con){
   rb->bipbuff = b;
   rb->to_commit = 0;
 
-  //uint16_t* temp_buff = get_buffer_slice(rb->bipbuff,read,size);
+  //int16_t* temp_buff = get_buffer_slice(rb->bipbuff,read,size);
   //rb->buff = temp_buff;
 
   BufferSlice* b_slice = get_buffer_slice_offsets(read,size);
