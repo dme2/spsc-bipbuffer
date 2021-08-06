@@ -4,12 +4,15 @@
 #include <string.h>
 
 #include <pthread.h>
+#include <semaphore.h>
 /* test multithreaded usage */
 
 pthread_mutex_t rw_mutex = PTHREAD_MUTEX_INITIALIZER;
 pthread_mutex_t cond_mutex = PTHREAD_MUTEX_INITIALIZER;
 pthread_cond_t cond = PTHREAD_COND_INITIALIZER;
 int cond_count = 0;
+
+sem_t buffer_sync_sem;
 
 uint16_t temp_src[] = {1,2,3,4,5,6,7,8,9,10};
 void* write_data_function(void* bpc){
@@ -23,12 +26,14 @@ void* write_data_function(void* bpc){
 
   commit(wb,10,wb->bipbuff->buffer_len);
   pthread_mutex_unlock(&rw_mutex);
+  //sem post(&buffer_sync_sem);
   cond_count++;
   pthread_cond_signal(&cond);
 }
 
 void* read_data_function(void* bpc){
   pthread_mutex_lock(&cond_mutex);
+  //sem wait(&buffer_sync_sem);
   //terrible, use a sem here
   while(cond_count < 1){
 	pthread_cond_wait(&cond,&cond_mutex);
@@ -55,6 +60,7 @@ void* read_data_function(void* bpc){
 int main(){
   printf("running!\n");
 
+  //sem_init(buffer_sync_sem, 0,1);
   pthread_t write_thread,read_thread;
   BipBuffer* b = new_buffer(4096);
   BipPC* bpc = split(b);
