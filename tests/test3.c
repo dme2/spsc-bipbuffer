@@ -16,7 +16,7 @@ void* write_data_function(void* bpc){
   pthread_mutex_lock(&rw_mutex);
   BipPC* real_bpc = (BipPC*) bpc;
 
-  WritableBuff* wb = reserve_exact(real_bpc->prod,20); //need to reserve more than 10 for some reason???
+  WritableBuff* wb = reserve_exact(real_bpc->prod,10);
 
   memcpy(wb->bipbuff->buffer + wb->slice->head, temp_src, 20);
   printf("memcpy success\n");

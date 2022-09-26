@@ -9,7 +9,7 @@ int main(){
   BipBuffer* b = new_buffer(4096);
   BipPC* bpc = split(b);
 
-  WritableBuff* wb = reserve_exact(bpc->prod,20); //need to reserve more than 10 for some reason???
+  WritableBuff* wb = reserve_exact(bpc->prod,10);
   uint16_t temp_src[] = {1,2,3,4,5,6,7,8,9,10};
 
   memcpy(wb->bipbuff->buffer + wb->slice->head, temp_src, 20);

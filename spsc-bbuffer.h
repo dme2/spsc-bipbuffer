@@ -20,6 +20,7 @@
  *     [x] multithreaded
  *  [] write more tests
  *  [x] Makefile
+ *  [] investigate memory fences/memory ordering
  * */
 
 
