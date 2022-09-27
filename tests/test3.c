@@ -21,7 +21,7 @@ void* write_data_function(void* bpc){
 
   WritableBuff* wb = reserve_exact(real_bpc->prod,10);
 
-  memcpy(wb->bipbuff->buffer + wb->slice->head, temp_src, 20);
+  memcpy(wb->bipbuff->buffer + wb->slice->head, temp_src, sizeof(uint16_t)*10);
   printf("memcpy success\n");
 
   commit(wb,10,wb->bipbuff->buffer_len);

@@ -105,7 +105,7 @@ BipBuffer* new_buffer(uint16_t len){
    they both get access to the same bipbuffer
 
    TODO:
-      [] Turn this into a union
+      [] Turn this into a union ?
 */
 
 typedef struct BipProducer {
